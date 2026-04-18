@@ -113,6 +113,22 @@ header h1 span{background:linear-gradient(135deg,var(--red),#ff8888);-webkit-bac
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(0,200,83,.9);color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;font-weight:700;z-index:999;transition:transform .3s ease;pointer-events:none;}
 .toast.show{transform:translateX(-50%) translateY(0);}
 
+/* ── API KEY BANNER ── */
+.apikey-bar{position:relative;z-index:10;max-width:700px;margin:0 auto 10px;padding:0 16px;}
+.apikey-box{background:var(--card);border:1px solid rgba(245,166,35,.3);border-radius:12px;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.apikey-box.ok{border-color:rgba(0,200,83,.35);background:rgba(0,200,83,.04);}
+.apikey-label{font-size:11px;letter-spacing:2px;color:var(--gold);white-space:nowrap;}
+.apikey-label.ok{color:#4caf76;}
+.apikey-input{flex:1;min-width:180px;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:7px;padding:7px 12px;color:var(--text);font-size:12px;font-family:'Noto Sans TC',sans-serif;outline:none;transition:border-color .2s;}
+.apikey-input:focus{border-color:var(--gold);}
+.apikey-save{background:rgba(245,166,35,.2);border:1px solid rgba(245,166,35,.4);color:var(--gold);padding:7px 16px;border-radius:7px;cursor:pointer;font-size:11px;letter-spacing:1px;transition:all .2s;white-space:nowrap;font-family:'Noto Sans TC',sans-serif;}
+.apikey-save:hover{background:rgba(245,166,35,.4);}
+.apikey-clear{background:rgba(200,16,46,.1);border:1px solid rgba(200,16,46,.25);color:#ff8888;padding:7px 12px;border-radius:7px;cursor:pointer;font-size:11px;transition:all .2s;font-family:'Noto Sans TC',sans-serif;}
+.apikey-clear:hover{background:rgba(200,16,46,.3);}
+.apikey-hint{font-size:11px;color:var(--dim);width:100%;line-height:1.6;}
+.apikey-hint a{color:var(--gold);text-decoration:none;}
+.apikey-hint a:hover{text-decoration:underline;}
+
 /* ── RESPONSIVE ── */
 @media(max-width:600px){
   .bracket-container{min-width:900px;}
@@ -127,6 +143,21 @@ header h1 span{background:linear-gradient(135deg,var(--red),#ff8888);-webkit-bac
   <h1>2026 FIFA <span>世界盃</span></h1>
   <p class="subtitle">互動式淘汰賽模擬器 · AI 即時預測</p>
 </header>
+
+<!-- API KEY BAR -->
+<div class="apikey-bar">
+  <div class="apikey-box" id="apikeyBox">
+    <span class="apikey-label" id="apikeyLabel">🔑 ANTHROPIC API KEY</span>
+    <input class="apikey-input" id="apikeyInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off" oninput="onApiKeyInput()">
+    <button class="apikey-save" onclick="saveApiKey()">儲存</button>
+    <button class="apikey-clear" id="apikeyClearBtn" onclick="clearApiKey()" style="display:none;">移除</button>
+    <div class="apikey-hint" id="apikeyHint">
+      ⚠️ 部署到 GitHub 後需要填入自己的 API Key 才能使用 AI 預測功能。
+      前往 <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> 取得 Key。
+      Key 僅儲存於瀏覽器 localStorage，不會上傳任何伺服器。
+    </div>
+  </div>
+</div>
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('group')">⚽ 分組賽</div>
@@ -631,51 +662,98 @@ function debounceAI(){
 }
 
 // ════════════════════════════════════════════════════════
+// API KEY MANAGEMENT
+// ════════════════════════════════════════════════════════
+const LS_KEY = 'fifa2026_apikey';
+
+function getApiKey(){
+  return localStorage.getItem(LS_KEY) || '';
+}
+
+function saveApiKey(){
+  const val = document.getElementById('apikeyInput').value.trim();
+  if(!val.startsWith('sk-ant-')){
+    showToast('⚠️ Key 格式不對，應以 sk-ant- 開頭');
+    return;
+  }
+  localStorage.setItem(LS_KEY, val);
+  updateApiKeyUI(true);
+  showToast('✅ API Key 已儲存！');
+}
+
+function clearApiKey(){
+  localStorage.removeItem(LS_KEY);
+  document.getElementById('apikeyInput').value = '';
+  updateApiKeyUI(false);
+  showToast('🗑 API Key 已移除');
+}
+
+function onApiKeyInput(){
+  const val = document.getElementById('apikeyInput').value.trim();
+  document.getElementById('apikeyBox').classList.toggle('ok', val.startsWith('sk-ant-'));
+}
+
+function updateApiKeyUI(hasKey){
+  const box   = document.getElementById('apikeyBox');
+  const label = document.getElementById('apikeyLabel');
+  const input = document.getElementById('apikeyInput');
+  const clearBtn = document.getElementById('apikeyClearBtn');
+  const hint  = document.getElementById('apikeyHint');
+  if(hasKey){
+    box.classList.add('ok');
+    label.textContent = '✅ API KEY 已設定';
+    label.classList.add('ok');
+    input.value = '••••••••••••••••••••••••';
+    input.disabled = true;
+    clearBtn.style.display = 'block';
+    hint.textContent = 'AI 預測功能已啟用。如需更換 Key 請點「移除」後重新輸入。';
+  } else {
+    box.classList.remove('ok');
+    label.textContent = '🔑 ANTHROPIC API KEY';
+    label.classList.remove('ok');
+    input.value = '';
+    input.disabled = false;
+    clearBtn.style.display = 'none';
+    hint.innerHTML = '⚠️ 部署到 GitHub 後需要填入自己的 API Key 才能使用 AI 預測。前往 <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> 取得 Key。Key 僅儲存於瀏覽器 localStorage，不會上傳任何伺服器。';
+  }
+}
+
+function initApiKeyUI(){
+  const key = getApiKey();
+  if(key) updateApiKeyUI(true);
+}
+
+// ════════════════════════════════════════════════════════
 // AI ANALYSIS
 // ════════════════════════════════════════════════════════
 async function runAIAnalysis(){
   const btn=document.getElementById('aiAnalyzeBtn');
   const content=document.getElementById('aiContent');
+
+  const apiKey = getApiKey();
+  if(!apiKey){
+    content.innerHTML = '<div style="color:#ffaa44;line-height:1.8;">🔑 請先在頁面上方輸入並儲存你的 <strong>Anthropic API Key</strong>，才能使用 AI 預測功能。<br><br>前往 <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--gold)">console.anthropic.com</a> 取得 Key。</div>';
+    return;
+  }
+
   if(btn) btn.disabled=true;
-  content.innerHTML=`<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>AI 分析中，請稍候...</span></div>`;
+  content.innerHTML='<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>AI 分析中，請稍候...</span></div>';
 
-  // Build current bracket state summary
-  const qualSummary=Object.entries(qualified).map(([l,q])=>`${l}組: 1st=${q[0].f}${q[0].n}, 2nd=${q[1].f}${q[1].n}`).join('\n');
-  
-  const winnerList=Object.entries(matchWinners).map(([k,v])=>`${k}: ${v.f}${v.n}`).join('\n');
-  
-  // Remaining teams in bracket
-  const stillAlive=new Set();
-  Object.values(matchData).forEach(m=>{
-    if(m.a) stillAlive.add(m.a.n);
-    if(m.b) stillAlive.add(m.b.n);
-  });
-  Object.values(matchWinners).forEach(w=>stillAlive.delete(w.n));
-  // Actually, compute current round participants
+  const qualSummary=Object.entries(qualified).map(([l,q])=>l+'組: 1st='+q[0].f+q[0].n+', 2nd='+q[1].f+q[1].n).join('\n');
+  const winnerList=Object.entries(matchWinners).map(([k,v])=>k+': '+v.f+v.n).join('\n');
   const finalWinner=matchWinners['final_1'];
-  
-  const prompt=`你是2026 FIFA世界盃分析專家。以下是當前淘汰賽分支圖狀況：
 
-【分組賽晉級結果】
-${qualSummary||'（尚未完成分組賽）'}
-
-【淘汰賽已產生的勝者】
-${winnerList||'（淘汰賽尚未開始）'}
-
-${finalWinner ? '【決賽冠軍】'+finalWinner.f+finalWinner.n+' 奪冠！' : ''}
-
-請根據以上資訊，用繁體中文提供：
-1. 🏆 冠軍預測（最有可能奪冠的1-3支球隊及理由）
-2. 💀 最危險的對決（哪些即將到來的比賽最關鍵）
-3. ⚡ 最大黑馬（最可能爆冷的球隊）
-4. 📊 整體賽事走勢分析
-
-語氣要有臨場感，像足球評述員。每個段落用emoji開頭。回答限400字以內。`;
+  const prompt='你是2026 FIFA世界盃分析專家。以下是當前淘汰賽分支圖狀況：\n\n【分組賽晉級結果】\n'+(qualSummary||'（尚未完成分組賽）')+'\n\n【淘汰賽已產生的勝者】\n'+(winnerList||'（淘汰賽尚未開始）')+'\n\n'+(finalWinner?'【決賽冠軍】'+finalWinner.f+finalWinner.n+' 奪冠！':'')+'\n\n請根據以上資訊，用繁體中文提供：\n1. 🏆 冠軍預測（最有可能奪冠的1-3支球隊及理由）\n2. 💀 最危險的對決（哪些即將到來的比賽最關鍵）\n3. ⚡ 最大黑馬（最可能爆冷的球隊）\n4. 📊 整體賽事走勢分析\n\n語氣要有臨場感，像足球評述員。每個段落用emoji開頭。回答限400字以內。';
 
   try {
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1000,
@@ -683,10 +761,19 @@ ${finalWinner ? '【決賽冠軍】'+finalWinner.f+finalWinner.n+' 奪冠！' : 
       })
     });
     const data=await res.json();
-    const text=data.content?.find(c=>c.type==='text')?.text||'無法取得分析結果。';
-    content.innerHTML=`<div style="white-space:pre-line;line-height:1.9;">${text}</div>`;
+    if(data.error){
+      const msg = data.error.message||'未知錯誤';
+      if(msg.includes('invalid') || msg.includes('auth')){
+        content.innerHTML='<div style="color:#ff8888;">❌ API Key 無效，請移除後重新輸入正確的 Key。</div>';
+      } else {
+        content.innerHTML='<div style="color:#ff8888;">⚠️ API 錯誤：'+msg+'</div>';
+      }
+    } else {
+      const text=data.content?.find(c=>c.type==='text')?.text||'無法取得分析結果。';
+      content.innerHTML='<div style="white-space:pre-line;line-height:1.9;">'+text+'</div>';
+    }
   } catch(e){
-    content.innerHTML=`<div style="color:#ff8888;">⚠️ AI 分析暫時無法使用，請稍後再試。</div>`;
+    content.innerHTML='<div style="color:#ff8888;">⚠️ 網路錯誤，請確認網路連線後再試。<br><small style="color:var(--dim)">'+e.message+'</small></div>';
   }
   if(btn) btn.disabled=false;
 }
@@ -722,6 +809,7 @@ function showToast(msg){
 // ════════════════════════════════════════════════════════
 initGroups();
 checkBracketBtn();
+initApiKeyUI();
 </script>
 </body>
 </html>
