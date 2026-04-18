@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 FIFA 世界盃 · 淘汰賽模擬器</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red: #c8102e; --green: #007a33; --gold: #f5a623; --gold2: #ffe066;
+  --dark: #080810; --card: #10101e; --card2: #181828;
+  --border: #252538; --text: #f0f0f8; --dim: #7777aa;
+  --win: #00c853; --lose: #555570;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--dark);color:var(--text);font-family:'Noto Sans TC',sans-serif;min-height:100vh;overflow-x:auto;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 10% 30%,rgba(0,122,51,.06) 0,transparent 60%),radial-gradient(ellipse 60% 40% at 90% 70%,rgba(200,16,46,.06) 0,transparent 60%);pointer-events:none;z-index:0;}
+
+/* ── HEADER ── */
+header{text-align:center;padding:28px 20px 20px;position:relative;z-index:2;}
+header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(32px,5vw,60px);letter-spacing:4px;background:linear-gradient(135deg,#fff 0%,var(--gold) 50%,#fff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+header h1 span{background:linear-gradient(135deg,var(--red),#ff8888);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.subtitle{font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--dim);margin-top:6px;}
+
+/* ── TABS ── */
+.tabs{display:flex;justify-content:center;gap:8px;padding:16px 20px;position:relative;z-index:2;flex-wrap:wrap;}
+.tab{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:12px;letter-spacing:2px;cursor:pointer;transition:all .2s;color:var(--dim);}
+.tab:hover,.tab.active{background:rgba(245,166,35,.15);border-color:var(--gold);color:var(--gold);}
+
+/* ── GROUP STAGE ── */
+#groupStage{position:relative;z-index:2;padding:0 16px 30px;}
+.phase-title{text-align:center;font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:6px;color:var(--gold);margin:20px 0 16px;}
+.groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.group-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.group-head{background:linear-gradient(135deg,#1a1a30,#0f0f1e);padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+.group-letter{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold);line-height:1;}
+.group-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--dim);}
+.group-note{font-size:11px;color:#aaa;margin-top:2px;}
+.team-slots{padding:8px 0;}
+.team-slot{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:grab;transition:background .15s;position:relative;border-radius:6px;margin:2px 6px;}
+.team-slot:active{cursor:grabbing;}
+.team-slot.dragging{opacity:.4;}
+.team-slot.drag-over{background:rgba(245,166,35,.12);outline:1px dashed var(--gold);}
+.team-slot.qualified{background:rgba(0,200,83,.08);}
+.team-slot.qualified::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--win);border-radius:0 2px 2px 0;}
+.team-slot.eliminated{opacity:.45;}
+.slot-rank{width:18px;font-size:11px;color:var(--dim);text-align:center;font-weight:700;}
+.slot-flag{font-size:20px;width:26px;text-align:center;}
+.slot-name{flex:1;font-size:13px;font-weight:500;}
+.slot-pts{font-size:11px;color:var(--dim);}
+.qualify-btn{background:rgba(0,200,83,.15);border:1px solid rgba(0,200,83,.3);color:#4caf76;font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;transition:all .2s;font-family:'Noto Sans TC',sans-serif;}
+.qualify-btn:hover{background:rgba(0,200,83,.3);}
+.qualify-btn.done{background:rgba(0,200,83,.3);border-color:var(--win);color:var(--win);}
+
+/* ── BRACKET ── */
+#bracketStage{position:relative;z-index:2;padding:0 10px 40px;}
+.bracket-wrap{overflow-x:auto;padding:10px 0 20px;}
+.bracket-container{display:flex;gap:0;min-width:1200px;align-items:stretch;position:relative;}
+.round-col{display:flex;flex-direction:column;justify-content:space-around;flex:1;padding:0 4px;position:relative;}
+.round-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:var(--dim);text-align:center;padding:6px 0 10px;}
+.match-slot{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:4px 2px;transition:border-color .2s;position:relative;}
+.match-slot:hover{border-color:rgba(245,166,35,.3);}
+.match-slot.has-winner{border-color:rgba(0,200,83,.25);}
+.match-team{display:flex;align-items:center;gap:7px;padding:7px 10px;cursor:pointer;transition:background .15s;position:relative;}
+.match-team:first-child{border-bottom:1px solid var(--border);}
+.match-team:hover{background:rgba(255,255,255,.04);}
+.match-team.winner{background:rgba(0,200,83,.1);}
+.match-team.winner .mt-name{color:var(--win);font-weight:700;}
+.match-team.loser{opacity:.45;}
+.match-team.tbd{opacity:.5;cursor:default;}
+.mt-flag{font-size:16px;width:22px;text-align:center;}
+.mt-name{flex:1;font-size:12px;}
+.mt-odds{font-size:10px;color:var(--gold);font-weight:700;}
+.match-label{position:absolute;top:4px;right:6px;font-size:9px;color:var(--dim);letter-spacing:1px;}
+.clear-match-btn{position:absolute;top:4px;right:6px;background:rgba(200,16,46,.15);border:1px solid rgba(200,16,46,.3);color:#ff6b6b;font-size:9px;padding:2px 6px;border-radius:5px;cursor:pointer;transition:all .2s;display:none;z-index:3;font-family:'Noto Sans TC',sans-serif;letter-spacing:.5px;}
+.match-slot.has-winner .clear-match-btn{display:block;}
+.clear-match-btn:hover{background:rgba(200,16,46,.4);color:#fff;}
+.bracket-controls{display:flex;justify-content:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.ctrl-btn{background:var(--card);border:1px solid var(--border);color:var(--dim);font-size:11px;padding:7px 16px;border-radius:8px;cursor:pointer;transition:all .2s;font-family:'Noto Sans TC',sans-serif;letter-spacing:1px;}
+.ctrl-btn:hover{border-color:rgba(200,16,46,.5);color:#ff6b6b;background:rgba(200,16,46,.08);}
+.ctrl-btn.danger{border-color:rgba(200,16,46,.4);color:#ff6b6b;}
+.ctrl-btn.danger:hover{background:rgba(200,16,46,.2);}
+/* group clear btn */
+.clear-qual-btn{background:rgba(200,16,46,.1);border:1px solid rgba(200,16,46,.25);color:#ff8888;font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;transition:all .2s;font-family:'Noto Sans TC',sans-serif;}
+.clear-qual-btn:hover{background:rgba(200,16,46,.3);color:#fff;}
+
+/* Centre trophy */
+.trophy-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;padding:10px;}
+.trophy-center{text-align:center;}
+.trophy-emoji{font-size:60px;animation:float 3s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.champion-name{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);letter-spacing:2px;margin-top:6px;}
+.champion-flag{font-size:32px;}
+
+/* ── AI PANEL ── */
+#aiPanel{position:relative;z-index:2;padding:0 16px 40px;}
+.ai-box{background:var(--card);border:1px solid rgba(245,166,35,.25);border-radius:14px;padding:20px;max-width:900px;margin:0 auto;}
+.ai-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.ai-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--gold),#ff8c00);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.ai-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--gold);}
+.ai-subtitle{font-size:11px;color:var(--dim);}
+.ai-content{font-size:13px;line-height:1.9;color:#cccce0;white-space:pre-line;}
+.ai-loading{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:13px;}
+.ai-dot{width:8px;height:8px;background:var(--gold);border-radius:50%;animation:blink 1.2s infinite;}
+.ai-dot:nth-child(2){animation-delay:.2s;}
+.ai-dot:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.ai-btn{background:linear-gradient(135deg,rgba(245,166,35,.2),rgba(255,140,0,.15));border:1px solid var(--gold);color:var(--gold);padding:9px 22px;border-radius:8px;cursor:pointer;font-size:12px;letter-spacing:2px;transition:all .2s;font-family:'Noto Sans TC',sans-serif;margin-top:14px;}
+.ai-btn:hover{background:rgba(245,166,35,.3);}
+.ai-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(0,200,83,.9);color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;font-weight:700;z-index:999;transition:transform .3s ease;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .bracket-container{min-width:900px;}
+  .mt-name{font-size:10px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:48px;animation:float 3s ease-in-out infinite;display:block;margin-bottom:8px;">🏆</div>
+  <h1>2026 FIFA <span>世界盃</span></h1>
+  <p class="subtitle">互動式淘汰賽模擬器 · AI 即時預測</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('group')">⚽ 分組賽</div>
+  <div class="tab" onclick="showTab('bracket')">🏟 淘汰賽分支圖</div>
+  <div class="tab" onclick="showTab('ai')">🤖 AI 冠軍預測</div>
+</div>
+
+<div id="groupStage">
+  <div class="phase-title">分組賽 · 選擇晉級隊伍</div>
+  <p style="text-align:center;font-size:12px;color:var(--dim);margin-bottom:18px;">拖曳可調整排名 · 點擊「確認晉級」選出各組前2名 · 第三名由系統統計最佳8支</p>
+  <div class="groups-grid" id="groupsGrid"></div>
+  <div style="text-align:center;margin-top:24px;">
+    <button class="ai-btn" onclick="proceedToBracket()" id="bracketBtn" disabled>🏟 進入淘汰賽分支圖</button>
+  </div>
+</div>
+
+<div id="bracketStage" style="display:none;">
+  <div class="phase-title">淘汰賽分支圖</div>
+  <p style="text-align:center;font-size:12px;color:var(--dim);margin-bottom:14px;">點擊隊伍名稱選擇勝者 · 依分支圖推進至冠軍</p>
+  <div class="bracket-controls">
+    <button class="ctrl-btn" onclick="clearRound('r32')">↩ 清除 32強</button>
+    <button class="ctrl-btn" onclick="clearRound('r16')">↩ 清除 16強</button>
+    <button class="ctrl-btn" onclick="clearRound('qf')">↩ 清除 8強</button>
+    <button class="ctrl-btn" onclick="clearRound('sf')">↩ 清除 4強</button>
+    <button class="ctrl-btn" onclick="clearRound('final')">↩ 清除 決賽</button>
+    <button class="ctrl-btn danger" onclick="clearAllBracket()">🗑 全部重置</button>
+  </div>
+  <div class="bracket-wrap">
+    <div class="bracket-container" id="bracketContainer"></div>
+  </div>
+</div>
+
+<div id="aiStage" style="display:none;">
+  <div id="aiPanel">
+    <div class="phase-title">🤖 AI 冠軍預測</div>
+    <div class="ai-box">
+      <div class="ai-header">
+        <div class="ai-icon">🤖</div>
+        <div><div class="ai-title">Claude AI 分析</div><div class="ai-subtitle">根據當前分支圖狀況即時預測</div></div>
+      </div>
+      <div class="ai-content" id="aiContent">
+        <div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>等待分析...</span></div>
+      </div>
+      <button class="ai-btn" id="aiAnalyzeBtn" onclick="runAIAnalysis()">🔮 開始 AI 預測分析</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════
+const GROUPS = {
+  A: { teams: [{f:'🇲🇽',n:'墨西哥',r:15},{f:'🇿🇦',n:'南非',r:61},{f:'🇰🇷',n:'南韓',r:22},{f:'🇨🇿',n:'捷克',r:35}] },
+  B: { teams: [{f:'🇨🇦',n:'加拿大',r:40},{f:'🇧🇦',n:'波士尼亞',r:60},{f:'🇶🇦',n:'卡達',r:58},{f:'🇨🇭',n:'瑞士',r:19}] },
+  C: { teams: [{f:'🇧🇷',n:'巴西',r:5},{f:'🇲🇦',n:'摩洛哥',r:14},{f:'🇭🇹',n:'海地',r:83},{f:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',n:'蘇格蘭',r:29}] },
+  D: { teams: [{f:'🇺🇸',n:'美國',r:16},{f:'🇵🇾',n:'巴拉圭',r:66},{f:'🇦🇺',n:'澳大利亞',r:23},{f:'🇹🇷',n:'土耳其',r:27}] },
+  E: { teams: [{f:'🇩🇪',n:'德國',r:13},{f:'🇨🇼',n:'古拉索',r:99},{f:'🇨🇮',n:'象牙海岸',r:53},{f:'🇪🇨',n:'厄瓜多',r:44}] },
+  F: { teams: [{f:'🇳🇱',n:'荷蘭',r:7},{f:'🇯🇵',n:'日本',r:18},{f:'🇸🇪',n:'瑞典',r:25},{f:'🇹🇳',n:'突尼西亞',r:38}] },
+  G: { teams: [{f:'🇧🇪',n:'比利時',r:3},{f:'🇪🇬',n:'埃及',r:36},{f:'🇮🇷',n:'伊朗',r:21},{f:'🇳🇿',n:'紐西蘭',r:95}] },
+  H: { teams: [{f:'🇪🇸',n:'西班牙',r:2},{f:'🇨🇻',n:'維德角',r:87},{f:'🇸🇦',n:'沙烏地阿拉伯',r:56},{f:'🇺🇾',n:'烏拉圭',r:12}] },
+  I: { teams: [{f:'🇫🇷',n:'法國',r:1},{f:'🇸🇳',n:'塞內加爾',r:20},{f:'🇮🇶',n:'伊拉克',r:68},{f:'🇳🇴',n:'挪威',r:30}] },
+  J: { teams: [{f:'🇦🇷',n:'阿根廷',r:4},{f:'🇩🇿',n:'阿爾及利亞',r:52},{f:'🇦🇹',n:'奧地利',r:26},{f:'🇯🇴',n:'約旦',r:78}] },
+  K: { teams: [{f:'🇵🇹',n:'葡萄牙',r:6},{f:'🇨🇩',n:'剛果民主',r:48},{f:'🇺🇿',n:'烏茲別克',r:65},{f:'🇨🇴',n:'哥倫比亞',r:24}] },
+  L: { teams: [{f:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',n:'英格蘭',r:5},{f:'🇭🇷',n:'克羅埃西亞',r:11},{f:'🇬🇭',n:'迦納',r:72},{f:'🇵🇦',n:'巴拿馬',r:65}] },
+};
+
+// Bracket slots: [slotId, label, left-seed, right-seed] 32 matches → 16 → 8 → 4 → 2 → 1
+// Bracket structure per FIFA 2026 official draw
+const BRACKET_STRUCTURE = [
+  // Round of 32 — left side
+  {id:'r32_1', seeds:['1E','3ABCDF']},
+  {id:'r32_2', seeds:['1I','3CDFGH']},
+  {id:'r32_3', seeds:['2A','2B']},
+  {id:'r32_4', seeds:['1F','2C']},
+  // Round of 32 — left bottom
+  {id:'r32_5', seeds:['2K','2L']},
+  {id:'r32_6', seeds:['1H','2J']},
+  {id:'r32_7', seeds:['1D','3BEFIJ']},
+  {id:'r32_8', seeds:['1G','3AEHIJ']},
+  // Round of 32 — right side
+  {id:'r32_9',  seeds:['1C','2F']},
+  {id:'r32_10', seeds:['2E','2I']},
+  {id:'r32_11', seeds:['1A','3CEFHI']},
+  {id:'r32_12', seeds:['1L','3EHIJK']},
+  // Round of 32 — right bottom
+  {id:'r32_13', seeds:['1J','2H']},
+  {id:'r32_14', seeds:['2D','2G']},
+  {id:'r32_15', seeds:['1B','3EFGIJ']},
+  {id:'r32_16', seeds:['1K','3DEIJL']},
+];
+
+// State
+let groupOrder = {}; // groupLetter -> [team, team, team, team]
+let qualified = {}; // groupLetter -> [1st, 2nd]
+let thirdPlaceTeams = []; // up to 8 best 3rd
+let bracketSlots = {}; // slotId -> {teamA, teamB, winner}
+let rounds = []; // built after qualification
+
+// ════════════════════════════════════════════════════════
+// INIT GROUP CARDS
+// ════════════════════════════════════════════════════════
+function initGroups() {
+  const grid = document.getElementById('groupsGrid');
+  grid.innerHTML = '';
+  Object.entries(GROUPS).forEach(([letter, data]) => {
+    groupOrder[letter] = [...data.teams];
+    grid.appendChild(buildGroupCard(letter));
+  });
+}
+
+function buildGroupCard(letter) {
+  var card = document.createElement('div');
+  card.className = 'group-card';
+  card.id = 'gc_' + letter;
+  var qual = qualified[letter] || [];
+  var teams = groupOrder[letter];
+  var teamRows = teams.map(function(t, i) {
+    var isQ = qual.some(function(q){ return q.n===t.n; });
+    var isElim = qual.length===2 && !isQ;
+    var cls = 'team-slot' + (isQ?' qualified':'') + (isElim?' eliminated':'');
+    return '<div class="'+cls+'" draggable="true" data-letter="'+letter+'" data-idx="'+i+'"'
+      +' ondragstart="dragStart(event)" ondragover="dragOver(event)"'
+      +' ondrop="dropTeam(event)" ondragleave="dragLeave(event)">'
+      +'<span class="slot-rank">'+(i+1)+'</span>'
+      +'<span class="slot-flag">'+t.f+'</span>'
+      +'<span class="slot-name">'+t.n+'</span>'
+      +'<span class="slot-pts">FIFA #'+t.r+'</span>'
+      +'</div>';
+  }).join('');
+  var statusText = qual.length===2
+    ? qual[0].f+qual[0].n+' \u00b7 '+qual[1].f+qual[1].n+' \u6649\u7d1a\u2713'
+    : '\u9078\u64c7\u524d2\u540d\u6649\u7d1a';
+  var clearBtnHtml = qual.length===2
+    ? '<button class="clear-qual-btn" onclick="clearQualified(\''+letter+'\')">\u2715 \u91cd\u9078</button>'
+    : '';
+  var qualBtnCls = 'qualify-btn' + (qual.length===2?' done':'');
+  var qualBtnTxt = qual.length===2 ? '\u2713 \u5df2\u78ba\u8a8d' : '\u78ba\u8a8d\u6649\u7d1a';
+  card.innerHTML =
+    '<div class="group-head">'
+    +'<div class="group-letter">'+letter+'</div>'
+    +'<div><div class="group-label">GROUP \u00b7 '+letter+'\u7d44</div>'
+    +'<div class="group-note">\u62d6\u66f3\u6392\u5e8f \u00b7 \u524d2\u540d\u6649\u7d1a</div></div>'
+    +'</div>'
+    +'<div class="team-slots" id="slots_'+letter+'">'+teamRows+'</div>'
+    +'<div style="padding:8px 10px;display:flex;gap:6px;align-items:center;border-top:1px solid var(--border);">'
+    +'<span style="font-size:11px;color:var(--dim);flex:1;">'+statusText+'</span>'
+    +clearBtnHtml
+    +'<button class="'+qualBtnCls+'" onclick="setQualified(\''+letter+'\')">'+qualBtnTxt+'</button>'
+    +'</div>';
+  return card;
+}
+
+// ════════════════════════════════════════════════════════
+// DRAG & DROP
+// ════════════════════════════════════════════════════════
+let dragLetter=null, dragIdx=null;
+function dragStart(e){
+  dragLetter=e.currentTarget.dataset.letter;
+  dragIdx=+e.currentTarget.dataset.idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function dropTeam(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const toIdx=+e.currentTarget.dataset.idx;
+  const toLetter=e.currentTarget.dataset.letter;
+  if(dragLetter!==toLetter){return;}
+  const arr=groupOrder[dragLetter];
+  const [removed]=arr.splice(dragIdx,1);
+  arr.splice(toIdx,0,removed);
+  groupOrder[dragLetter]=arr;
+  // reset qualification if reordered
+  delete qualified[dragLetter];
+  rebuildGroupCard(dragLetter);
+  checkBracketBtn();
+}
+function rebuildGroupCard(letter){
+  const old=document.getElementById('gc_'+letter);
+  const newCard=buildGroupCard(letter);
+  old.replaceWith(newCard);
+}
+
+// ════════════════════════════════════════════════════════
+// QUALIFICATION
+// ════════════════════════════════════════════════════════
+function setQualified(letter){
+  const teams=groupOrder[letter];
+  qualified[letter]=[teams[0],teams[1]];
+  rebuildGroupCard(letter);
+  checkBracketBtn();
+  showToast(`${teams[0].f}${teams[0].n} & ${teams[1].f}${teams[1].n} 晉級！`);
+}
+
+function clearQualified(letter){
+  delete qualified[letter];
+  // also reset bracket if already entered
+  matchWinners={};
+  matchData={};
+  rebuildGroupCard(letter);
+  checkBracketBtn();
+  showToast(letter+'組晉級已重置，請重新確認');
+}
+
+function checkBracketBtn(){
+  const allDone=Object.keys(GROUPS).every(l=>qualified[l]);
+  const btn=document.getElementById('bracketBtn');
+  if(allDone){btn.disabled=false;btn.textContent='🏟 進入淘汰賽分支圖';}
+  else{
+    const done=Object.keys(qualified).length;
+    btn.textContent='🏟 進入淘汰賽 ('+done+'/12 組完成)';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// SEED MAP — map seed label to actual team
+// ════════════════════════════════════════════════════════
+function resolveSeeds(){
+  // Build 1st/2nd per group
+  const seeds = {};
+  Object.entries(qualified).forEach(([l,q])=>{
+    seeds['1'+l] = q[0];
+    seeds['2'+l] = q[1];
+  });
+  // Best 3rd place teams (ranked by FIFA rank desc/rank asc = lower is better)
+  const thirds=Object.entries(GROUPS).map(([l,_])=>{
+    const t=groupOrder[l][2];
+    return {team:t, group:l};
+  }).sort((a,b)=>a.team.r - b.team.r);
+  
+  const thirdSlots=['3ABCDF','3CDFGH','3BEFIJ','3AEHIJ','3CEFHI','3EHIJK','3EFGIJ','3DEIJL'];
+  thirdSlots.forEach((slot,i)=>{ seeds[slot] = thirds[i] ? thirds[i].team : null; });
+  return seeds;
+}
+
+// ════════════════════════════════════════════════════════
+// BRACKET BUILD
+// ════════════════════════════════════════════════════════
+let matchWinners = {}; // matchId -> team
+let matchData = {}; // matchId -> {a, b}
+
+function proceedToBracket(){
+  if(!Object.keys(GROUPS).every(l=>qualified[l])){
+    showToast('請先完成所有12組的晉級確認！');return;
+  }
+  const seedMap = resolveSeeds();
+  
+  // Init R32 matches
+  BRACKET_STRUCTURE.forEach(m=>{
+    matchData[m.id]={a:seedMap[m.seeds[0]]||null, b:seedMap[m.seeds[1]]||null};
+  });
+
+  showTab('bracket');
+  renderBracket();
+  setTimeout(()=>runAIAnalysis(),300);
+}
+
+function renderBracket(){
+  const container=document.getElementById('bracketContainer');
+  container.innerHTML='';
+
+  // We build: R32-left | R16-left | QF-left | SF-left | FINAL | SF-right | QF-right | R16-right | R32-right
+  const leftR32  = ['r32_1','r32_2','r32_3','r32_4','r32_5','r32_6','r32_7','r32_8'];
+  const rightR32 = ['r32_9','r32_10','r32_11','r32_12','r32_13','r32_14','r32_15','r32_16'];
+
+  // Build subsequent rounds from winners
+  buildNextRounds();
+
+  const leftR16  = getNextRound(leftR32,  'r16L');
+  const rightR16 = getNextRound(rightR32, 'r16R');
+  const leftQF   = getNextRound(leftR16.ids,  'qfL');
+  const rightQF  = getNextRound(rightR16.ids, 'qfR');
+  const leftSF   = getNextRound(leftQF.ids,   'sfL');
+  const rightSF  = getNextRound(rightQF.ids,  'sfR');
+  const final    = getNextRound([leftSF.ids[0], rightSF.ids[0]], 'final');
+
+  // Columns
+  const cols = [
+    {title:'32強',  ids:leftR32},
+    {title:'16強',  ids:leftR16.ids},
+    {title:'8強',   ids:leftQF.ids},
+    {title:'4強',   ids:leftSF.ids},
+  ];
+
+  cols.forEach(c=>{
+    const col=makeCol(c.title, c.ids);
+    container.appendChild(col);
+  });
+
+  // Trophy center
+  const trophyCol=document.createElement('div');
+  trophyCol.className='trophy-col';
+  const champion = matchWinners[final.ids[0]];
+  trophyCol.innerHTML=`<div class="trophy-center">
+    <div style="font-size:12px;letter-spacing:2px;color:var(--dim);margin-bottom:4px;">WORLD</div>
+    <div style="font-size:12px;letter-spacing:2px;color:var(--dim);margin-bottom:8px;">CHAMPIONS</div>
+    <div class="trophy-emoji">🏆</div>
+    <div class="champion-flag">${champion?champion.f:''}</div>
+    <div class="champion-name">${champion?champion.n:'?'}</div>
+    ${renderFinalMatch(final.ids[0])}
+  </div>`;
+  container.appendChild(trophyCol);
+
+  const rightCols=[
+    {title:'4強',  ids:rightSF.ids},
+    {title:'8強',  ids:rightQF.ids},
+    {title:'16強', ids:rightR16.ids},
+    {title:'32強', ids:rightR32},
+  ];
+  rightCols.forEach(c=>{
+    const col=makeCol(c.title, c.ids);
+    container.appendChild(col);
+  });
+}
+
+function renderFinalMatch(id){
+  const m=matchData[id];
+  if(!m||!m.a||!m.b) return '';
+  return `<div style="margin-top:8px;background:var(--card);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:6px 10px;min-width:110px;">
+    <div style="font-size:9px;color:var(--dim);letter-spacing:2px;margin-bottom:4px;">決賽</div>
+    ${renderMatchTeamInline(m.a,id,matchWinners[id])}
+    ${renderMatchTeamInline(m.b,id,matchWinners[id])}
+  </div>`;
+}
+
+function renderMatchTeamInline(team,matchId,winner){
+  if(!team) return `<div style="padding:4px 0;font-size:11px;color:var(--dim);">TBD</div>`;
+  const isW=winner&&winner.n===team.n;
+  const isL=winner&&winner.n!==team.n;
+  return `<div style="display:flex;align-items:center;gap:5px;padding:4px 0;cursor:pointer;${isL?'opacity:.4':''}" onclick="pickWinner('${matchId}','${team.n}')">
+    <span style="font-size:14px">${team.f}</span>
+    <span style="font-size:11px;flex:1;${isW?'color:var(--win);font-weight:700':''}">${team.n}</span>
+    ${isW?'<span style="font-size:10px">✓</span>':''}
+  </div>`;
+}
+
+function makeCol(title, ids){
+  const col=document.createElement('div');
+  col.className='round-col';
+  col.innerHTML=`<div class="round-title">${title}</div>`;
+  ids.forEach(id=>{
+    col.appendChild(buildMatchSlot(id));
+  });
+  return col;
+}
+
+function buildMatchSlot(id){
+  const slot=document.createElement('div');
+  slot.className='match-slot'+(matchWinners[id]?' has-winner':'');
+  slot.id='ms_'+id;
+  const m=matchData[id];
+  // Clear button (only visible when has-winner via CSS)
+  const clearBtn=document.createElement('button');
+  clearBtn.className='clear-match-btn';
+  clearBtn.textContent='✕ 清除';
+  clearBtn.onclick=(e)=>{e.stopPropagation();clearMatch(id);};
+  slot.appendChild(clearBtn);
+  if(!m){
+    slot.insertAdjacentHTML('beforeend','<div class="match-team tbd"><span class="mt-flag">🔜</span><span class="mt-name">TBD</span></div><div class="match-team tbd"><span class="mt-flag">🔜</span><span class="mt-name">TBD</span></div>');
+    return slot;
+  }
+  slot.insertAdjacentHTML('beforeend', renderTeamRow(m.a,id)+renderTeamRow(m.b,id));
+  return slot;
+}
+
+function renderTeamRow(team,matchId){
+  if(!team) return `<div class="match-team tbd"><span class="mt-flag">🔜</span><span class="mt-name">TBD</span></div>`;
+  const winner=matchWinners[matchId];
+  const isW=winner&&winner.n===team.n;
+  const isL=winner&&winner.n!==team.n;
+  const odds=getOdds(team);
+  return `<div class="match-team${isW?' winner':''}${isL?' loser':''}" onclick="pickWinner('${matchId}','${team.n}')">
+    <span class="mt-flag">${team.f}</span>
+    <span class="mt-name">${team.n}</span>
+    <span class="mt-odds">${odds}</span>
+    ${isW?'<span style="margin-left:2px;font-size:10px;color:var(--win)">✓</span>':''}
+  </div>`;
+}
+
+function getOdds(team){
+  const r=team.r||50;
+  if(r<=5) return '★★★★★';
+  if(r<=10) return '★★★★';
+  if(r<=20) return '★★★';
+  if(r<=40) return '★★';
+  return '★';
+}
+
+// ════════════════════════════════════════════════════════
+// ROUNDS LOGIC
+// ════════════════════════════════════════════════════════
+function buildNextRounds(){
+  // Pair up R32 winners into R16, etc.
+  buildRound(
+    ['r32_1','r32_2','r32_3','r32_4','r32_5','r32_6','r32_7','r32_8'],
+    ['r16L_1','r16L_2','r16L_3','r16L_4']
+  );
+  buildRound(
+    ['r32_9','r32_10','r32_11','r32_12','r32_13','r32_14','r32_15','r32_16'],
+    ['r16R_1','r16R_2','r16R_3','r16R_4']
+  );
+  buildRound(['r16L_1','r16L_2','r16L_3','r16L_4'],['qfL_1','qfL_2']);
+  buildRound(['r16R_1','r16R_2','r16R_3','r16R_4'],['qfR_1','qfR_2']);
+  buildRound(['qfL_1','qfL_2'],['sfL_1']);
+  buildRound(['qfR_1','qfR_2'],['sfR_1']);
+  buildRound(['sfL_1','sfR_1'],['final_1']);
+}
+
+function buildRound(prevIds, nextIds){
+  for(let i=0;i<nextIds.length;i++){
+    const a=matchWinners[prevIds[i*2]]||null;
+    const b=matchWinners[prevIds[i*2+1]]||null;
+    matchData[nextIds[i]]={a,b};
+  }
+}
+
+function getNextRound(prevIds, prefix){
+  const ids=[];
+  for(let i=0;i<prevIds.length/2;i++) ids.push(prefix+'_'+(i+1));
+  return {ids};
+}
+
+// ════════════════════════════════════════════════════════
+// PICK WINNER
+// ════════════════════════════════════════════════════════
+function pickWinner(matchId, teamName){
+  const m=matchData[matchId];
+  if(!m) return;
+  const team=(m.a&&m.a.n===teamName)?m.a:(m.b&&m.b.n===teamName)?m.b:null;
+  if(!team) return;
+  matchWinners[matchId]=team;
+  // cascade to next rounds
+  buildNextRounds();
+  renderBracket();
+  showToast(`${team.f} ${team.n} 晉級！`);
+  // auto update AI
+  debounceAI();
+}
+
+// ════════════════════════════════════════════════════════
+// CLEAR FUNCTIONS
+// ════════════════════════════════════════════════════════
+const ROUND_MATCH_IDS = {
+  r32:   ['r32_1','r32_2','r32_3','r32_4','r32_5','r32_6','r32_7','r32_8',
+           'r32_9','r32_10','r32_11','r32_12','r32_13','r32_14','r32_15','r32_16'],
+  r16:   ['r16L_1','r16L_2','r16L_3','r16L_4','r16R_1','r16R_2','r16R_3','r16R_4'],
+  qf:    ['qfL_1','qfL_2','qfR_1','qfR_2'],
+  sf:    ['sfL_1','sfR_1'],
+  final: ['final_1'],
+};
+
+// Dependency map: clearing a round also clears all later rounds
+const ROUND_ORDER = ['r32','r16','qf','sf','final'];
+
+function clearMatch(id){
+  // find which round this match belongs to
+  let roundIdx = -1;
+  for(let i=0;i<ROUND_ORDER.length;i++){
+    if(ROUND_MATCH_IDS[ROUND_ORDER[i]].includes(id)){roundIdx=i;break;}
+  }
+  // delete this match winner + all downstream
+  for(let i=roundIdx;i<ROUND_ORDER.length;i++){
+    ROUND_MATCH_IDS[ROUND_ORDER[i]].forEach(mid=>delete matchWinners[mid]);
+  }
+  buildNextRounds();
+  renderBracket();
+  showToast('已清除該場比賽結果');
+  debounceAI();
+}
+
+function clearRound(round){
+  const idx=ROUND_ORDER.indexOf(round);
+  if(idx<0) return;
+  // clear this round and all later rounds
+  for(let i=idx;i<ROUND_ORDER.length;i++){
+    ROUND_MATCH_IDS[ROUND_ORDER[i]].forEach(mid=>delete matchWinners[mid]);
+  }
+  buildNextRounds();
+  renderBracket();
+  const labels={r32:'32強',r16:'16強',qf:'8強',sf:'4強',final:'決賽'};
+  showToast(`已清除 ${labels[round]} 及之後所有結果`);
+  debounceAI();
+}
+
+function clearAllBracket(){
+  matchWinners={};
+  buildNextRounds();
+  renderBracket();
+  showToast('🗑 所有淘汰賽結果已重置');
+  debounceAI();
+}
+
+
+function debounceAI(){
+  clearTimeout(aiTimer);
+  aiTimer=setTimeout(()=>{if(document.getElementById('aiStage').style.display!=='none') runAIAnalysis();},800);
+}
+
+// ════════════════════════════════════════════════════════
+// AI ANALYSIS
+// ════════════════════════════════════════════════════════
+async function runAIAnalysis(){
+  const btn=document.getElementById('aiAnalyzeBtn');
+  const content=document.getElementById('aiContent');
+  if(btn) btn.disabled=true;
+  content.innerHTML=`<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>AI 分析中，請稍候...</span></div>`;
+
+  // Build current bracket state summary
+  const qualSummary=Object.entries(qualified).map(([l,q])=>`${l}組: 1st=${q[0].f}${q[0].n}, 2nd=${q[1].f}${q[1].n}`).join('\n');
+  
+  const winnerList=Object.entries(matchWinners).map(([k,v])=>`${k}: ${v.f}${v.n}`).join('\n');
+  
+  // Remaining teams in bracket
+  const stillAlive=new Set();
+  Object.values(matchData).forEach(m=>{
+    if(m.a) stillAlive.add(m.a.n);
+    if(m.b) stillAlive.add(m.b.n);
+  });
+  Object.values(matchWinners).forEach(w=>stillAlive.delete(w.n));
+  // Actually, compute current round participants
+  const finalWinner=matchWinners['final_1'];
+  
+  const prompt=`你是2026 FIFA世界盃分析專家。以下是當前淘汰賽分支圖狀況：
+
+【分組賽晉級結果】
+${qualSummary||'（尚未完成分組賽）'}
+
+【淘汰賽已產生的勝者】
+${winnerList||'（淘汰賽尚未開始）'}
+
+${finalWinner ? '【決賽冠軍】'+finalWinner.f+finalWinner.n+' 奪冠！' : ''}
+
+請根據以上資訊，用繁體中文提供：
+1. 🏆 冠軍預測（最有可能奪冠的1-3支球隊及理由）
+2. 💀 最危險的對決（哪些即將到來的比賽最關鍵）
+3. ⚡ 最大黑馬（最可能爆冷的球隊）
+4. 📊 整體賽事走勢分析
+
+語氣要有臨場感，像足球評述員。每個段落用emoji開頭。回答限400字以內。`;
+
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.find(c=>c.type==='text')?.text||'無法取得分析結果。';
+    content.innerHTML=`<div style="white-space:pre-line;line-height:1.9;">${text}</div>`;
+  } catch(e){
+    content.innerHTML=`<div style="color:#ff8888;">⚠️ AI 分析暫時無法使用，請稍後再試。</div>`;
+  }
+  if(btn) btn.disabled=false;
+}
+
+// ════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const tabs=['group','bracket','ai'];
+    t.classList.toggle('active',tabs[i]===tab);
+  });
+  document.getElementById('groupStage').style.display=tab==='group'?'block':'none';
+  document.getElementById('bracketStage').style.display=tab==='bracket'?'block':'none';
+  document.getElementById('aiStage').style.display=tab==='ai'?'block':'none';
+  if(tab==='ai') runAIAnalysis();
+}
+
+// ════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════
+let toastTimer=null;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════
+initGroups();
+checkBracketBtn();
+</script>
+</body>
+</html>
